@@ -56,6 +56,12 @@ abstract class PropertiesBasedConfig(
   @Config(Array("task.replicants"))
   def taskReplicants: Int = ClusteredBeamTuning().replicants
 
+  @Config(Array("task.restartIntervalStartTime"))
+  def taskRestartIntervalStartTime: Long = ClusteredBeamTuning().restartIntervalStartTime
+
+  @Config(Array("task.partitionTotal"))
+  def taskPartitionTotal: Int = ClusteredBeamTuning().partitionTotal
+
   @Config(Array("task.warmingPeriod"))
   def taskWarmingPeriod: Period = ClusteredBeamTuning().warmingPeriod
 

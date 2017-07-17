@@ -147,10 +147,10 @@ class DruidBeamMaker[A](
   }
 
   override def newBeam(interval: Interval, partition: Int) = {
-    require(
-      beamTuning.segmentGranularity.widen(interval) == interval,
-      "Interval does not match segmentGranularity[%s]: %s" format(beamTuning.segmentGranularity, interval)
-    )
+//    require(
+//      beamTuning.segmentGranularity.widen(interval) == interval,
+//      "Interval does not match segmentGranularity[%s]: %s" format(beamTuning.segmentGranularity, interval)
+//    )
     val baseFirehoseId = DruidBeamMaker.generateBaseFirehoseId(
       location.dataSource,
       beamTuning.segmentGranularity,
@@ -200,10 +200,10 @@ class DruidBeamMaker[A](
       // Backwards compatibility (see toDict).
       beamTuning.segmentBucket(new DateTime(d("timestamp"), ISOChronology.getInstanceUTC))
     }
-    require(
-      beamTuning.segmentGranularity.widen(interval) == interval,
-      "Interval does not match segmentGranularity[%s]: %s" format(beamTuning.segmentGranularity, interval)
-    )
+//    require(
+//      beamTuning.segmentGranularity.widen(interval) == interval,
+//      "Interval does not match segmentGranularity[%s]: %s" format(beamTuning.segmentGranularity, interval)
+//    )
     val partition = int(d("partition"))
     val tasks = if (d contains "tasks") {
       list(d("tasks")).map(dict(_)).map(d => TaskPointer(str(d("id")), str(d("firehoseId"))))

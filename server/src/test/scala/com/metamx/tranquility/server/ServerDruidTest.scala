@@ -122,7 +122,7 @@ object ServerDruidTest
   val TimeFormat = "posix"
 
   def newDruidBeam(curator: CuratorFramework, timekeeper: Timekeeper): Beam[Dict] = {
-    val tuning = ClusteredBeamTuning(Granularity.HOUR, 0.minutes, 10.minutes, 1, 1, 1, 1)
+    val tuning = ClusteredBeamTuning(Granularity.HOUR, 0.minutes, 10.minutes, 1, 1, 0, 0, 1, 1)
     val rollup = DruidRollup(
       SpecificDruidDimensions(
         Vector("foo"),

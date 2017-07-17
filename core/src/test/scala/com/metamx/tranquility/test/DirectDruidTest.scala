@@ -89,7 +89,7 @@ object DirectDruidTest
 
   def newBuilder(curator: CuratorFramework, timekeeper: Timekeeper): DruidBeams.Builder[SimpleEvent, SimpleEvent] = {
     val dataSource = "xxx"
-    val tuning = ClusteredBeamTuning(Granularity.HOUR, 0.minutes, 10.minutes, 1, 1, 1, 1)
+    val tuning = ClusteredBeamTuning(Granularity.HOUR, 0.minutes, 10.minutes, 1, 1, 0, 0, 1, 1)
     val rollup = DruidRollup(
       SpecificDruidDimensions(
         Vector("foo"),

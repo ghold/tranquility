@@ -23,6 +23,7 @@ import com.google.common.collect.Maps;
 import com.metamx.common.logger.Logger;
 import com.metamx.tranquility.config.DataSourceConfig;
 import com.metamx.tranquility.config.TranquilityConfig;
+import com.metamx.tranquility.kafka.curator.CuratorClient;
 import com.metamx.tranquility.kafka.model.PropertiesBasedKafkaConfig;
 import com.metamx.tranquility.kafka.writer.WriterController;
 import io.airlift.airline.Command;
@@ -30,11 +31,15 @@ import io.airlift.airline.Help;
 import io.airlift.airline.HelpOption;
 import io.airlift.airline.Option;
 import io.airlift.airline.SingleCommand;
+import org.apache.curator.framework.api.CuratorWatcher;
+import org.apache.zookeeper.WatchedEvent;
 
 import javax.inject.Inject;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.rmi.RemoteException;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -42,7 +47,7 @@ import java.util.Properties;
  * tranquility-kafka main.
  */
 @Command(name = "tranquility-kafka", description = "Kafka consumer which pushes events to Druid through Tranquility")
-public class KafkaMain
+public class KafkaMain //implements IService
 {
   private static final Logger log = new Logger(KafkaMain.class);
 
@@ -52,9 +57,23 @@ public class KafkaMain
   @Option(name = {"-f", "-configFile"}, description = "Path to configuration property file")
   public String propertiesFile;
 
+  @Option(name = {"-z", "-zookeeper"}, description = "zookeeper for tranquility management")
+  public String zookeeperConnect;
+
+  @Option(name = {"-n", "-namespace"}, description = "tranquility namespace")
+  public String namespace = "/tranquility/instances";
+
+  @Option(name = {"-i", "-instance"}, description = "tranquility instance name")
+  public String instance;
+
+  private KafkaConsumer kafkaConsumer;
+  private static KafkaMain main;
+  private static CuratorClient curator;
+  private static String instancePath;
+
   public static void main(String[] args) throws Exception
   {
-    KafkaMain main;
+//    KafkaMain main;
     try {
       main = SingleCommand.singleCommand(KafkaMain.class).parse(args);
     }
@@ -69,10 +88,19 @@ public class KafkaMain
     }
 
     main.run();
+    Thread.sleep(Long.MAX_VALUE);
+
   }
 
   public void run() throws InterruptedException
   {
+    instancePath = main.namespace + "/" + main.instance;
+    try {
+      curator = new CuratorClient(main.zookeeperConnect, instancePath,10, 5000);
+      curator.getClient().getChildren().usingWatcher(watcherBuilder()).forPath(instancePath);
+    } catch (Exception e) {
+      throw new InterruptedException(e.getLocalizedMessage());
+    }
     if (propertiesFile == null || propertiesFile.isEmpty()) {
       helpOption.help = true;
       helpOption.showHelpIfRequested();
@@ -120,7 +148,7 @@ public class KafkaMain
     }
 
     final WriterController writerController = new WriterController(dataSourceConfigs);
-    final KafkaConsumer kafkaConsumer = new KafkaConsumer(
+      final KafkaConsumer kafkaConsumer = new KafkaConsumer(
         globalConfig,
         kafkaProperties,
         dataSourceConfigs,
@@ -128,6 +156,7 @@ public class KafkaMain
     );
 
     try {
+      this.setKafkaConsumer(kafkaConsumer);
       kafkaConsumer.start();
     }
     catch (Throwable t) {
@@ -143,6 +172,7 @@ public class KafkaMain
               public void run()
               {
                 log.info("Initiating shutdown...");
+                curator.close(instancePath);
                 kafkaConsumer.stop();
               }
             }
@@ -150,5 +180,57 @@ public class KafkaMain
     );
 
     kafkaConsumer.join();
+  }
+
+    public KafkaConsumer getKafkaConsumer() {
+        return kafkaConsumer;
+    }
+
+    public void setKafkaConsumer(KafkaConsumer kafkaConsumer) {
+        this.kafkaConsumer = kafkaConsumer;
+    }
+
+    public KafkaMain getMain() {
+        return main;
+    }
+
+    public void setMain(KafkaMain main) {
+        this.main = main;
+    }
+
+//    @Override
+  private void restart() throws RemoteException,InterruptedException {
+    log.info("Initiating restart...");
+    log.info("Initiating shutdown...");
+    curator.close(instancePath);
+    this.kafkaConsumer.stop();
+    log.info("Initiating start...");
+    this.getMain().run();
+  }
+
+  private static CuratorWatcher watcherBuilder() {
+    return new CuratorWatcher() {
+      @Override
+      public void process(WatchedEvent event) throws Exception {
+        switch (event.getType()) {
+          case NodeChildrenChanged:
+            try {
+              KafkaMain.messageHandle(event.getPath());
+            } catch (Exception e) {
+              e.printStackTrace();
+            }
+            break;
+        }
+      }
+    };
+  }
+
+  private static void messageHandle(String watchPath) throws Exception {
+    List<String> children = curator.getClient().getChildren().forPath(watchPath);
+    for (String a : children) {
+      String childrenPath = watchPath + "/" + a;
+      curator.getClient().delete().forPath(childrenPath);
+    }
+    main.restart();
   }
 }

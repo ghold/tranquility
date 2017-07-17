@@ -28,6 +28,8 @@ case class ClusteredBeamTuning(
   windowPeriod: Period = new Period("PT10M"),
   partitions: Int = 1,
   replicants: Int = 1,
+  restartIntervalStartTime: Long = 0L,
+  partitionTotal: Int = 0,
   minSegmentsPerBeam: Int = 1,
   maxSegmentsPerBeam: Int = 1
 ) extends Logging
@@ -93,6 +95,20 @@ object ClusteredBeamTuning
     def replicants(x: Int) = new Builder(config.copy(replicants = x))
 
     /**
+      * for restart. beam will check the restart is the same as the current Interval
+      *
+      * Default is 0L.
+      */
+    def restartIntervalStartTime(x: Long) = new Builder(config.copy(restartIntervalStartTime = x))
+
+    /**
+      * restart make partition increment, this will say how many partitions need in an interval
+      *
+      * Default is 0.
+      */
+    def partitionTotal(x: Int) = new Builder(config.copy(partitionTotal = x))
+
+    /**
       * Create beams that cover at least this many segments (randomly between minSegmentsPerBeam and maxSegmentsPerBeam).
       * This can be useful if you want to minimize beam turnover.
       *
@@ -124,9 +140,11 @@ object ClusteredBeamTuning
     warmingPeriod: Period,
     windowPeriod: Period,
     partitions: Int,
-    replicants: Int
+    replicants: Int,
+    restartIntervalStartTime: Long,
+    partitionTotal: Int
   ): ClusteredBeamTuning =
   {
-    apply(segmentGranularity, warmingPeriod, windowPeriod, partitions, replicants, 1, 1)
+    apply(segmentGranularity, warmingPeriod, windowPeriod, partitions, replicants, restartIntervalStartTime, partitionTotal, 1, 1)
   }
 }

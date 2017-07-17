@@ -63,6 +63,7 @@ import io.druid.data.input.impl.DimensionSchema.ValueType
 import io.druid.data.input.impl.InputRowParser
 import io.druid.data.input.impl.MapInputRowParser
 import io.druid.data.input.impl.StringInputRowParser
+//import io.druid.data.input.ProtoBufInputRowParser
 import io.druid.data.input.impl.TimestampSpec
 import io.druid.segment.realtime.FireDepartment
 import java.nio.ByteBuffer
@@ -353,7 +354,9 @@ object DruidBeams
         ClusteredBeamTuning(
           segmentGranularity = fireDepartment.getDataSchema.getGranularitySpec.getSegmentGranularity,
           windowPeriod = fireDepartment.getTuningConfig.getWindowPeriod,
-          warmingPeriod = config.propertiesBasedConfig.taskWarmingPeriod
+          warmingPeriod = config.propertiesBasedConfig.taskWarmingPeriod,
+          restartIntervalStartTime = config.propertiesBasedConfig.taskRestartIntervalStartTime,
+          partitionTotal = config.propertiesBasedConfig.taskPartitionTotal
         )
       )
       .druidTuningMap(Option(config.specMap.getOrElse("tuningConfig", null)).map(dict(_)).getOrElse(Map.empty))
